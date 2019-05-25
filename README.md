@@ -22,6 +22,7 @@ The code **determines the top city using a hierarchical discovery approach**, th
    - Direct URL for city is obtained
    - URL to page containing list of city is obtained. Form here the URL to individual city pages are scraped.
 3. The final target URL containing the city information is scraped for extracting city data from it.
+   - If the city page contains a seperate page on transportation the same is used to extract additional transportation information.
 
 ## Output File Info
 - city_data.csv 
