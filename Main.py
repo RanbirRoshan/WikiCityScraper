@@ -9,16 +9,37 @@ import re
 encoding = 'UTF-8'
 city_list_file_name = "CityURLList.txt"
 out_file_name = "city_data.csv"
+
+# url's used for data gathering
 add_city_url = "https://en.wikipedia.org/wiki/Category:Lists_of_cities_in_the_United_States_by_state"#"https://en.wikipedia.org/wiki/Lists_of_cities_in_the_United_States"
 landing_page = "https://en.wikipedia.org/wiki/U.S._state"
 state_univ_list_url = "https://en.wikipedia.org/wiki/List_of_state_universities_in_the_United_States"
+airport_list_url = "https://en.wikipedia.org/wiki/List_of_airports_in_the_United_States"
+port_list_url = "https://en.wikipedia.org/wiki/List_of_ports_in_the_United_States"
+us_air_force_url= "https://en.wikipedia.org/wiki/List_of_United_States_Air_Force_installations"
+#court_list_url = "https://en.wikipedia.org/wiki/List_of_United_States_district_and_territorial_courts"
+federal_prison_url = "https://en.wikipedia.org/wiki/List_of_United_States_federal_prisons"
+state_wise_hospital_url = "https://en.wikipedia.org/wiki/Lists_of_hospitals_in_the_United_States"
+sports_arena_url = "https://en.wikipedia.org/wiki/List_of_indoor_arenas_in_the_United_States"
 
-use_old_list = False
+use_old_list = True
 print_city_name = False
 
 state_url_list = []
 city_url_list  = []
 city_url_with_public_univ = []
+city_url_with_airport = []
+airport_detail_list = []
+port_names_list = []
+city_url_with_port = []
+air_force_names_list = []
+city_url_with_air_force = []
+federal_prison_names_list = []
+city_url_with_federal_prison = []
+hospital_names_list = []
+city_url_with_hospital = []
+sports_arena_data = []
+city_url_with_sports_arena = []
 
 # looks for population data from these years
 pop_years = ["1698","1712","1723","1737","1746","1756","1771","1790","1800","1810","1820","1830","1840","1850","1860","1870","1880","1890","1900","1910","1920","1930","1940","1950","1960","1970","1980","1990","2000","2010","2011","2012","2013","2014","2015","2016","2017","2018"]
@@ -29,7 +50,6 @@ def GetCityPosIndex (tab, type):
     list = []
     head_tr = None
     if (head != None):
-        print(head.getText())
         head_tr = head.find('tr')
 
     else:
@@ -112,12 +132,9 @@ def ProcessCityTables(data, url):
                         ParseCityList(td1, url, False)
         type, pos = IsCityListTable(tab)
         if type > 0:
-            #print(tab)
-            #print(type, pos)
             trs = tab.find_all('tr')
             col_count = -1
             for tr in trs:
-                #if type == 3:
                 tds = tr.find_all('th')
                 if(len(tds)<1):
                     tds = tr.find_all('td')
@@ -169,7 +186,7 @@ def AddCityFromSeperateListPage (url):
 
     if "/wiki/" not in  url:
         return
-    #print ("\t*******Data from Subpage: ", url)
+    print ("\t*******Data from Subpage: ", url)
     success, response = GetWebPage(url)
     if (success):
         soup = BeautifulSoup(response, 'html.parser')
@@ -294,13 +311,29 @@ def GetDefaultRowVal():
             "",                     #"Settled",
             "false",                #"Has Public University",
             "false",                #"Has Airport",
+            "",                     #"Airport FAA",
+            "",                     #"Airport IATA",
+            "",                     #"Airport ICAO",
+            "",                     #"Airport Name(s)",
+            "",                     #"Airport Type",
+            "false",                #"Has AirForce Base",
+            "",                     #"AirForce Base Name",
             "false",                #"Has SeaPort",
+            "",                     #"Seaport Name",
             "false",                #"Has Rapid transit",
             "false",                #"Has Commuter rail",
             "false",                #"Has Intercity rail",
             "false",                #"Has Rail",
             "false",                #"Has Ferries",
             "false",                #"Has Tourism",
+            "false",                #"Has Federal Prison",
+            "",                     #"Federal Prision Name",
+            "false",                #"Has Hospital",
+            "",                     #"Hospital Name",
+            "false",                #"Has Sports Arena(cpacity>3000)",
+            "",                     #"Sports Arena Name",
+            "",                     #"Sports Arena Open",
+            "0",                     #"Sports Arena Capacity",
             "",                     #"Consolidated",
             "",                     #"Incorporated",
             "",                     #"Named for",
@@ -351,13 +384,29 @@ def InfoBoxHeader():
            "Settled",
            "Has Public University",
            "Has Airport",
+           "Airport FAA",
+           "Airport IATA",
+           "Airport ICAO",
+           "Airport Name(s)",
+           "Airport Type",
+           "Has AirForce Base",
+           "AirForce Base Name",
            "Has SeaPort",
+           "Seaport Name",
            "Has Rapid transit",
            "Has Commuter rail",
            "Has Intercity rail",
            "Has Rail",
            "Has Ferries",
            "Has Tourism",
+           "Has Federal Prison",
+           "Federal Prison Name",
+           "Has Hospital",
+           "Hospital Name",
+           "Has Sports Arena(cpacity>3000)",
+           "Sports Arena Name",
+           "Sports Arena Open",
+           "Sports Arena Capacity",
            "Consolidated",
            "Incorporated",
            "Named for",
@@ -526,7 +575,7 @@ def ProcessTransportData(data, rows):
 def ProcessTransportationURL(url, rows):
     if "/wiki/" not in  url:
         return
-    #print("Processing additional transportation URL: ", url)
+    print("Processing additional transportation URL: ", url)
     success, response = GetWebPage(url)
     if (success):
         soup = BeautifulSoup(response, 'html.parser')
@@ -542,6 +591,38 @@ def ProcessTransportation (data, link, rows):
         if a is not None and a.has_attr('title'):
             if "Transportation in" in a['title']:
                 ProcessTransportationURL("https://en.wikipedia.org"+a['href'], rows)
+    if link in city_url_with_airport:
+        rows[InfoBoxHeader().index("Has Airport")] = "True"
+        index = city_url_with_airport.index(link)
+        val = airport_detail_list[index]
+        rows[InfoBoxHeader().index("Airport FAA")] = val[0]
+        rows[InfoBoxHeader().index("Airport IATA")] = val[1]
+        rows[InfoBoxHeader().index("Airport ICAO")] = val[2]
+        rows[InfoBoxHeader().index("Airport Name(s)")] = val [3]
+        rows[InfoBoxHeader().index("Airport Type")] = val[4]
+    if link in city_url_with_port:
+        rows[InfoBoxHeader().index("Has SeaPort")] = "True"
+        index = city_url_with_port.index(link)
+        rows[InfoBoxHeader().index("Seaport Name")] = port_names_list[index]
+    if link in city_url_with_air_force:
+        rows[InfoBoxHeader().index("Has AirForce Base")] = "True"
+        index = city_url_with_air_force.index(link)
+        rows[InfoBoxHeader().index("AirForce Base Name")] = air_force_names_list[index]
+    if link in city_url_with_federal_prison:
+        rows[InfoBoxHeader().index("Has Federal Prison")] = "True"
+        index = city_url_with_federal_prison.index(link)
+        rows[InfoBoxHeader().index("Federal Prison Name")] = federal_prison_names_list[index]
+    if link in city_url_with_hospital:
+        rows[InfoBoxHeader().index("Has Hospital")] = "True"
+        index = city_url_with_hospital.index(link)
+        rows[InfoBoxHeader().index("Hospital Name")] = hospital_names_list[index]
+    if link in city_url_with_sports_arena:
+        rows[InfoBoxHeader().index("Has Sports Arena(cpacity>3000)")] = "True"
+        index = city_url_with_sports_arena.index(link)
+        data = sports_arena_data[index]
+        rows[InfoBoxHeader().index("Sports Arena Name")] = data[0]
+        rows[InfoBoxHeader().index("Sports Arena Open")] = data[1]
+        rows[InfoBoxHeader().index("Sports Arena Capacity")] = data[2]
 
 
 def ProcessBooleanInfo(data, link, rows):
@@ -662,11 +743,10 @@ def ProcessUniversityURL(url):
 
     if success:
         soup = BeautifulSoup(response, 'html.parser')
-        # print (soup)
         ProcessUnivPage(soup, url)
 
     else:
-        print("Error in requesting public univ page: \"", url, "\". Error: \"", response, "\"")
+        print("Error in requesting url: \"", url, "\". Error: \"", response, "\"")
 
 
 def MapCityToAddMeta(data):
@@ -687,23 +767,19 @@ def ProcessStateUniversity():
     if success:
 
         soup = BeautifulSoup(response, 'html.parser')
-        # print (soup)
         MapCityToAddMeta(soup)
-        print("Done")
 
     else:
-        print("Error in requesting public univ page: \"", state_univ_list_url, "\". Error: \"", response, "\"")
+        print("Error in requesting url: \"", state_univ_list_url, "\". Error: \"", response, "\"")
 
 
 def ProcessCityListTables(data):
     soup = data
-    # print (soup)
     table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
     for table in table_all:
         head = table.find('thead')
         pos = 0
         if head is not None:
-            #print(head)
             all_th = head.findAll("th")
             for th in all_th:
                 pos = pos + 1
@@ -739,7 +815,6 @@ def ProcessAddCityPage (url):
     success, response = GetWebPage(url)
 
     if success:
-        #print("1************************************************************************")
         print(url)
         soup = BeautifulSoup(response, 'html.parser')
         ProcessCityListTables(soup)
@@ -752,21 +827,13 @@ def ProcessAddCityPage (url):
                 for key in keywords:
                     if a.has_attr('title') and key in a['title'] and "World" not in a.getText():
                         new_url = "https://en.wikipedia.org" + a['href']
-                        #new_url = "https://en.wikipedia.org/wiki/List_of_cities_and_counties_in_Virginia"
-                        #print(key)
-                        #print(li)
                         if "/wiki/" in  url:
                             success, response = GetWebPage(new_url)
 
                             if success:
-                                #print("2************************************************************************")
                                 print(new_url)
                                 soup = BeautifulSoup(response, 'html.parser')
                                 ProcessCityListTables(soup)
-
-
-
-
     else:
         print("Error in requesting public univ page: \"", url, "\". Error: \"", response, "\"")
 
@@ -781,17 +848,417 @@ def ProcessAddAdditonalCity(data):
             new_url = "https://en.wikipedia.org" + a['href']
             ProcessAddCityPage (new_url)
 
+
 def AddAdditonalCity():
 
     success, response = GetWebPage(add_city_url)
 
     if success:
         soup = BeautifulSoup(response, 'html.parser')
-        # print (soup)
         ProcessAddAdditonalCity(soup)
 
     else:
-        print("Error in requesting public univ page: \"", add_city_url, "\". Error: \"", response, "\"")
+        print("Error in requesting url: \"", add_city_url, "\". Error: \"", response, "\"")
+
+
+def ProcessListOfAirportPage(data):
+    soup = data
+    table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+    for table in table_all:
+        body = table.find('tbody')
+        if body is not None:
+            all_tr = body.findAll('tr')
+            for tr in all_tr:
+                all_td = tr.find_all('td')
+                elem_Count = len(all_td)
+                if elem_Count >= 6:
+
+                    a = all_td[0].find('a')
+                    FAA = all_td[1].getText().replace("\n","")
+                    IATA = all_td[2].getText().replace("\n","")
+                    ICAO = all_td[3].getText().replace("\n","")
+                    airport_det = all_td[4].getText().replace("\n","")
+                    role = all_td[5].getText().replace("\n","")
+                    city_url = ""
+                    if a is not None and a.has_attr('href'):
+                        city_url = "https://en.wikipedia.org" + a['href']
+
+                    if "/wiki/" not in city_url or FAA is None or FAA == "":
+                        continue
+
+                    if city_url not in city_url_list:
+                        city_url_list.append(city_url)
+
+                    if "P-S" in role:
+                        role = "Commercial Small hub"
+                    elif "P-L" in role:
+                        role = "Commercial Large hub"
+                    elif "P-M" in role:
+                        role = "Commercial Medium hub"
+                    elif "P-N" in role:
+                        role = "Commercial NonHub hub"
+
+                    details = [FAA, IATA, ICAO, airport_det, role]
+                    city_url_with_airport.append(city_url)
+                    airport_detail_list.append(details)
+
+
+def ProcessAirportList ():
+    success, response = GetWebPage(airport_list_url)
+
+    if success:
+        print(airport_list_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessListOfAirportPage(soup)
+
+    else:
+        print("Error in requesting page: \"", add_city_url, "\". Error: \"", response, "\"")
+
+
+def GetCityURLFromPortURL (port_url):
+    success, response = GetWebPage(port_url)
+
+    if success:
+        print (port_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        info_box = soup.find('table', attrs={'class': "infobox vcard"})
+        if info_box is None:
+            #print("CHECK PORT URL (missing info) : ", port_url)
+            return None
+        tr = info_box.find('tr', attrs={'class': "adr"})
+        if tr is not None:
+            td = tr.find('td')
+            if td is None:
+                return None
+            a = td.find('a')
+            if a is None:
+                #print("CHECK PORT URL (missing a) : ", port_url)
+                return None
+            return "https://en.wikipedia.org" + a['href']
+        return None
+
+    else:
+        print("Error in requesting url: \"", add_city_url, "\". Error: \"", response, "\"")
+
+def GetCityURLFromPrisonURL (port_url):
+    success, response = GetWebPage(port_url)
+
+    if success:
+        print (port_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        info_box = soup.find('table', attrs={'class': "infobox vcard"})
+        if info_box is None:
+            #print("CHECK PORT URL (missing info) : ", port_url)
+            return None
+        all_tr = info_box.findAll('tr')
+        for tr in all_tr:
+            th = tr.find('th')
+            if th is None or "Location" not in th.getText():
+                continue
+
+            a = tr.find('a')
+            if a is None:
+                #print("CHECK PORT URL (missing a) : ", port_url)
+                return None
+            return "https://en.wikipedia.org" + a['href']
+        return None
+
+    else:
+        print("Error in requesting url: \"", add_city_url, "\". Error: \"", response, "\"")
+
+
+def ProcessListOfPortPage(data):
+    soup = data
+    table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+    for table in table_all:
+        body = table.find('tbody')
+        if body is not None:
+            all_tr = body.findAll('tr')
+            for tr in all_tr:
+                all_td = tr.find_all('td')
+                elem_Count = len(all_td)
+                if elem_Count >= 2:
+
+                    a = all_td[1].find('a')
+                    port_url = ""
+                    if a is None or not a.has_attr('href'):
+                        continue
+
+                    port_url = "https://en.wikipedia.org" + a['href']
+
+                    port_name = a.getText()
+
+                    city_url = GetCityURLFromPortURL (port_url)
+
+                    if city_url is None or "/wiki/" not in city_url:
+                        continue
+
+                    if city_url not in city_url_list:
+                        city_url_list.append(city_url)
+
+                    city_url_with_port.append(city_url)
+                    port_names_list.append(port_name)
+
+
+def ProcessPortList():
+    success, response = GetWebPage(port_list_url)
+
+    if success:
+        print (port_list_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessListOfPortPage(soup)
+
+    else:
+        print("Error in requesting page: \"", add_city_url, "\". Error: \"", response, "\"")
+
+
+def ProcessListOfAirforcePage(data):
+    soup = data
+    table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+    for table in table_all:
+        body = table.find('tbody')
+        if body is not None:
+            all_tr = body.findAll('tr')
+            for tr in all_tr:
+                all_td = tr.find_all('td')
+                elem_Count = len(all_td)
+                if elem_Count >= 2:
+
+                    a = all_td[0].find('a')
+                    location = all_td[1].find('a')
+                    if a is None or not a.has_attr('href') or location is None or not location.has_attr('href'):
+                        continue
+
+                    city_url = "https://en.wikipedia.org" + location['href']
+
+                    port_name = a.getText()
+
+                    if city_url is None or "/wiki/" not in city_url:
+                        continue
+
+                    if city_url not in city_url_list:
+                        city_url_list.append(city_url)
+
+                    city_url_with_air_force.append(city_url)
+                    air_force_names_list.append(port_name)
+
+
+def ProcessAirForceList():
+    success, response = GetWebPage(us_air_force_url)
+
+    if success:
+        print (port_list_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessListOfAirforcePage(soup)
+
+    else:
+        print("Error in requesting page: \"", us_air_force_url, "\". Error: \"", response, "\"")
+
+
+def GetBuildingNameAndCityURLFromCourtURL(url):
+    success, response = GetWebPage(url)
+
+    if success:
+        print(url)
+        soup = BeautifulSoup(response, 'html.parser')
+
+        info_box = soup.find('table', attrs={'class': "infobox vcard"})
+        if info_box is None:
+            #print("CHECK PORT URL (missing info) : ", port_url)
+            return None
+        name = info_box.find('tr').getText()
+        if name is None:
+            return None, None
+
+        adr_tr = info_box.find('tr', attrs={'class': "adr"})
+        if adr_tr is None:
+            #print("CHECK PORT URL (missing adr) : ", port_url)
+            return None
+        a = adr_tr.find('a')
+        if a is None:
+            #print("CHECK PORT URL (missing a) : ", port_url)
+            return None
+        return "https://en.wikipedia.org" + a['href']
+
+    else:
+        print("Error in requesting page: \"", url, "\". Error: \"", response, "\"")
+        return None, None
+
+
+def ProcessListOfFederalPrision(data):
+    soup = data
+    table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+    for table in table_all:
+        body = table.find('tbody')
+        if body is not None:
+            all_tr = body.findAll('tr')
+            for tr in all_tr:
+                all_td = tr.find_all('td')
+                elem_Count = len(all_td)
+                if elem_Count >= 2:
+
+                    a = all_td[0].find('a')
+                    court_url = ""
+                    if a is None or not a.has_attr('href'):
+                        continue
+
+                    prison_url = "https://en.wikipedia.org" + a['href']
+
+                    city_url = GetCityURLFromPrisonURL (prison_url)
+                    prison_name = a.getText().replace("\n","")
+
+                    if city_url is None or "/wiki/" not in city_url:
+                        continue
+
+                    if city_url not in city_url_list:
+                        city_url_list.append(city_url)
+
+                    city_url_with_federal_prison.append(city_url)
+                    federal_prison_names_list.append(prison_name)
+
+
+def ProcessFederalPrison ():
+    success, response = GetWebPage(federal_prison_url)
+
+    if success:
+        print(federal_prison_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessListOfFederalPrision(soup)
+
+    else:
+        print("Error in requesting page: \"", federal_prison_url, "\". Error: \"", response, "\"")
+
+
+def ProcessHospitalInAState(url):
+    success, response = GetWebPage(url)
+
+    if success:
+        print(url)
+        hospital_found = False
+        soup = BeautifulSoup(response, 'html.parser')
+        table_all = soup.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+        for table in table_all:
+            body = table.find('tbody')
+            if body is not None:
+                all_tr = body.findAll('tr')
+                for tr in all_tr:
+                    all_td = tr.find_all('td')
+                    elem_Count = len(all_td)
+                    if elem_Count >= 2:
+
+                        a = all_td[0].find('a')
+                        location = all_td[1].find('a')
+                        if (a is None or len(a.getText()) == 0) and len(all_td[0].getText()) >0:
+                            a = all_td[0]
+                        if (a is None or len(a.getText()) == 0) and elem_Count >= 4:
+                            a = all_td[3].find('a')
+                        if a is None or location is None or not location.has_attr('href'):
+                            continue
+
+                        city_url = "https://en.wikipedia.org" + location['href']
+
+                        hospital_name = a.getText()
+
+                        if city_url is None or "/wiki/" not in city_url:
+                            continue
+
+                        hospital_found = True
+                        if city_url not in city_url_list:
+                            city_url_list.append(city_url)
+
+                        city_url_with_hospital.append(city_url)
+                        hospital_names_list.append(hospital_name)
+
+        if hospital_found:
+            return
+
+        all_li = soup.findAll('li')
+
+        for li in all_li:
+            all_a = li.findAll('a')
+            if (len(all_a) >= 2):
+                hospital_name = all_a[0].getText()
+                city_url = "https://en.wikipedia.org" + all_a[1]['href']
+                if city_url is None or "/wiki/" not in city_url or hospital_name is None or  'Template' in hospital_name:
+                    continue
+                if city_url not in city_url_list:
+                    city_url_list.append(city_url)
+
+                city_url_with_hospital.append(city_url)
+                hospital_names_list.append(hospital_name)
+
+    else:
+        print("Error in requesting page: \"", url, "\". Error: \"", response, "\"")
+
+def ProcessStateListOfHospital(data):
+    tables = data.findAll('table')
+    processed_url = []
+    for table in tables:
+        all_li = table.findAll('li')
+        for li in all_li:
+            a = li.find('a')
+            if a.has_attr('href'):
+                state_url = "https://en.wikipedia.org" + a['href']
+                if state_url in processed_url:
+                    return
+                if "/wiki/" in state_url and 'Template' not in state_url:
+                    ProcessHospitalInAState(state_url)
+                    processed_url.append(state_url)
+
+def ProcessHospitalStateList():
+    success, response = GetWebPage(state_wise_hospital_url)
+
+    if success:
+        print(state_wise_hospital_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessStateListOfHospital(soup)
+
+    else:
+        print("Error in requesting page: \"", state_wise_hospital_url, "\". Error: \"", response, "\"")
+
+
+def ProcessSportsAreaTables(data):
+    table_all = data.findAll('table', attrs={'class': ["wikitable", "sortable"]})
+    for table in table_all:
+        body = table.find('tbody')
+        if body is not None:
+            all_tr = body.findAll('tr')
+            for tr in all_tr:
+                all_td = tr.find_all('td')
+                elem_Count = len(all_td)
+                if elem_Count >= 10:
+
+                    a = all_td[2].find('a')
+                    location = all_td[3].find('a')
+                    if a is None or location is None or not location.has_attr('href'):
+                        continue
+
+                    city_url = "https://en.wikipedia.org" + location['href']
+
+                    arena_name = a.getText().replace("\n","")
+                    arena_open_data = all_td[9].getText().replace("\n","")
+                    arena_capacity = all_td[5].getText().replace(",","").replace("\n","")
+
+                    if city_url is None or "/wiki/" not in city_url:
+                        continue
+
+                    hospital_found = True
+                    if city_url not in city_url_list:
+                        city_url_list.append(city_url)
+                    data = [arena_name,arena_open_data,arena_capacity]
+                    city_url_with_sports_arena.append(city_url)
+                    sports_arena_data.append(data)
+
+def ProcessSportsArena ():
+    success, response = GetWebPage(sports_arena_url)
+
+    if success:
+        print(sports_arena_url)
+        soup = BeautifulSoup(response, 'html.parser')
+        ProcessSportsAreaTables(soup)
+
+    else:
+        print("Error in requesting page: \"", sports_arena_url, "\". Error: \"", response, "\"")
 
 
 def main ():
@@ -811,6 +1278,13 @@ def main ():
         else:
             ReadListFromFile(city_list_file_name)
 
+        ProcessSportsArena()
+        ProcessHospitalStateList()
+        ProcessPortList()
+        ProcessFederalPrison()
+        ProcessAirForceList()
+        ProcessPortList()
+        ProcessAirportList()
         ProcessStateUniversity ()
 
         total = len(city_url_list)
@@ -823,9 +1297,10 @@ def main ():
 
             count = count + 1
 
-            if (count%50) == 0:
-                #print(count, "/", total, " City URL: ", city_page_url)
-                print(count, "/", total)
+            print(count, "/", total, " City URL: ", city_page_url)
+            #if (count%50) == 0:
+
+                #print(count, "/", total)
 
             success, response = GetWebPage(city_page_url)
 
